@@ -68,7 +68,7 @@ This architecture is rigorously superior in specific scientific domains:
 
 ### Setup
 ```bash
-git clone https://github.com/your-username/LegendreNN.git
+git clone https://github.com/ulrikribler/LegendreNN.git
 cd LegendreNN
 pip install -r requirements.txt
 ```
