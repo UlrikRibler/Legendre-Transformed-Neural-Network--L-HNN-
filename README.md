@@ -98,10 +98,10 @@ If you use this code in your research, please cite the associated methodology:
 
 ```bibtex
 @software{legendre_nn_2026,
-  author = {Gemini Agent},
+  author = {Ulrik Ribler},
   title = {Legendre-Transformed Neural Network: A PyTorch Implementation},
   year = {2026},
-  url = {https://github.com/your-username/LegendreNN}
+  url = {https://github.com/ulrikribler/LegendreNN}
 }
 ```
 
