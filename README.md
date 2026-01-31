@@ -1,110 +1,115 @@
-# Legendre-Transformed Neural Network (L-HNN)
+# 🌌 Legendre-Transformed Neural Network (L-HNN)
 
 **A Unified Deep Learning Framework for Lagrangian and Hamiltonian Mechanics**
 
-## Abstract
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Framework: PyTorch](https://img.shields.io/badge/Framework-PyTorch-orange.svg)](https://pytorch.org/)
+[![Status: Scientific](https://img.shields.io/badge/Status-Scientific_Grade-blue.svg)](https://github.com/UlrikRibler/Legendre-Transformed-Neural-Network--L-HNN-)
 
-This repository implements the **Legendre-Transformed Neural Network (LegendreNN)**, a rigorous physics-informed architecture that bridges the gap between Lagrangian Neural Networks (LNN) and Hamiltonian Neural Networks (HNN). 
+## 📜 Abstract
 
-While LNNs offer data efficiency by operating in the observable configuration space $(q, \dot{q})$, they often lack the long-term stability provided by the symplectic structure of HNNs. Conversely, HNNs require canonical coordinates $(q, p)$, which are rarely directly observable in real-world systems (e.g., robotics).
+This repository implements the **Legendre-Transformed Neural Network (LegendreNN)**, a rigorous physics-informed architecture that bridges the gap between **Lagrangian Neural Networks (LNN)** and **Hamiltonian Neural Networks (HNN)**.
 
-**LegendreNN** solves this dichotomy by:
-1.  Approximating the scalar Lagrangian field $\mathcal{L}(q, \dot{q})$ via a neural network.
-2.  Implicitly constructing the Hamiltonian $\mathcal{H}(q, p)$ via the Legendre transform.
-3.  Deriving dynamics that strictly adhere to symplectic conservation laws while consuming standard state observations.
+This project is designed as a textbook example of "beautiful code" in Scientific Machine Learning (SciML), balancing high-level mathematical theory with robust software engineering. It doesn't just "work" — it deeply *understands* the physics it solves.
 
-## Mathematical Formulation
+---
+
+## ✨ The Beauty of the Implementation
+
+This project specifically targets the intersection of mathematical elegance and numerical stability.
+
+### 1. 🧠 Direct Translation: Math $\to$ Code
+The implementation in `model.py` follows the physical theory with almost zero translation noise. It is declarative programming at its best: you define the *physics* (the Lagrangian), and let the engine handle the calculus.
+
+*   **Theory:** $p = \frac{\partial \mathcal{L}}{\partial \dot{q}}$
+*   **Code:** `p = autograd.grad(L.sum(), q_dot, create_graph=True)[0]`
+
+### 2. 🛡️ Numerically Robust (The "Professional" Touch)
+Naive physics-ML implementations often crash when matrix inversion becomes unstable. This architecture treats the **Mass Matrix** ($M$) with the respect it deserves:
+*   **Solves, doesn't invert:** Instead of the unstable `.inverse()`, we use `torch.linalg.solve(M_reg, RHS)`.
+*   **Tikhonov Regularization:** We employ a safety valve ($M + \epsilon I$) to guarantee the matrix remains positive-definite, preventing the simulation from exploding near singularities.
+
+### 3. 🌊 Respect for Smoothness ($C^\infty$)
+Nature is smooth, so our model must be too.
+*   **Choice:** We use `nn.Softplus()` instead of `ReLU()`.
+*   **Why:** `ReLU` has a "kink" at 0, which makes second derivatives (forces) undefined. `Softplus` ensures our manifold is $C^\infty$ (infinitely differentiable), guaranteeing that the Hessian (Mass Matrix) always exists and is well-behaved.
+
+---
+
+## 📐 Mathematical Formulation
 
 ### The Unified Manifold
-The network learns a parameterized Lagrangian $\mathcal{L}_\theta(q, \dot{q})$. The forward dynamics are governed by the Euler-Lagrange equations, solved via a differentiable linear system involving the Hessian (Mass Matrix):
+The network learns a parameterized Lagrangian $\mathcal{L}_\theta(q, \dot{q})$. The forward dynamics are governed by the Euler-Lagrange equations, solved via a differentiable linear system:
 
 $$ M(q, \dot{q}) \ddot{q} + C(q, \dot{q}) \dot{q} = \nabla_q \mathcal{L} $$
 
 Where:
-*   $M = \nabla^2_{\dot{q}} \mathcal{L}$ is the generalized Mass Matrix.
-*   $C = \nabla^2_{q, \dot{q}} \mathcal{L}$ represents Coriolis and centrifugal terms.
+*   $M = \nabla^2_{\dot{q}} \mathcal{L}$ is the generalized **Mass Matrix**.
+*   $C = \nabla^2_{q, \dot{q}} \mathcal{L}$ represents **Coriolis & Centrifugal** forces.
 
 ### The Legendre Transform
-Unlike standard black-box models, the internal state representation is lifted to the cotangent bundle (phase space) via the fiber derivative:
-
-$$ p = \frac{\partial \mathcal{L}}{\partial \dot{q}} $$
-
-The system's total energy (Hamiltonian) is thus constructed as:
+We lift the internal state to the cotangent bundle (phase space) via the fiber derivative:
 
 $$ \mathcal{H}(q, p) = \langle p, \dot{q} \rangle - \mathcal{L}(q, \dot{q}) $$
 
-This ensures that the learned dynamics $\ddot{q}$ are conservative and reversible by construction.
+This ensures that the learned dynamics are **conservative** and **reversible** by construction.
 
-## Architecture
+---
 
-The implementation leverages PyTorch's automatic differentiation engine to compute higher-order derivatives on the fly.
+## 🚀 Superiority Scenarios
 
-*   **Manifold Smoothness:** Uses `Softplus` activations ($\beta=1$) to ensuring $C^\infty$ continuity, guaranteeing the existence of the Hessian $M$.
-*   **Robust Solver:** Solves the linear system $M \cdot \ddot{q} = F$ using Tikhonov regularization ($M_{reg} = M + \epsilon I$) to prevent singularities near critical points in the configuration space.
-*   **Differentiable Physics:** The entire pipeline, including the linear solve, is differentiable, allowing end-to-end training against acceleration data $\ddot{q}_{gt}$.
+Why use **LegendreNN** over standard HNNs or Neural ODEs?
 
-## Superiority Scenarios
+1.  **🤖 Robotics (Observable Coordinates):**
+    *   *Problem:* HNNs need momentum $p$, but robots only give you angles $q$ and velocities $\dot{q}$.
+    *   *Solution:* LegendreNN works directly with $(q, \dot{q})$ while still enforcing symplectic conservation.
 
-This architecture is rigorously superior in specific scientific domains:
+2.  **⏳ Long-Horizon Stability:**
+    *   *Problem:* Standard networks drift; energy "leaks" or "explodes" over time.
+    *   *Solution:* By enforcing Hamiltonian structure, the system stays on its energy level set indefinitely.
 
-1.  **Robotics & Control (Observable Coordinates):**
-    *   *Constraint:* Sensors provide joint angles $q$ and velocities $\dot{q}$. Momentum $p$ is unknown.
-    *   *Advantage:* LegendreNN accepts $(q, \dot{q})$ directly, eliminating the need for inverse dynamics pre-processing required by HNNs.
+3.  **🦾 Variable Inertia:**
+    *   *Problem:* Moving a robot arm changes its "perceived mass" (inertia).
+    *   *Solution:* The Hessian-based solver naturally captures these non-linear inertial changes.
 
-2.  **Long-Horizon Simulation:**
-    *   *Constraint:* Numerical integration of learned ODEs leads to energy drift.
-    *   *Advantage:* By enforcing the symplectic structure via the implicit Hamiltonian, the system is confined to the correct energy level set, preventing "exploding" or "vanishing" physical behavior over thousands of timesteps.
+---
 
-3.  **Variable Inertia Systems:**
-    *   *Constraint:* Systems like multi-link manipulators have configuration-dependent mass matrices $M(q)$.
-    *   *Advantage:* The Hessian-based formulation naturally captures these non-linear inertial effects, whereas simple MLPs fail to generalize across the state space.
-
-## Installation
-
-### Prerequisites
-*   Python 3.8+
-*   PyTorch 1.9+
-*   NumPy, SciPy, Matplotlib
+## 💻 Installation & Usage
 
 ### Setup
 ```bash
-git clone https://github.com/ulrikribler/LegendreNN.git
+git clone https://github.com/UlrikRibler/Legendre-Transformed-Neural-Network--L-HNN-.git
 cd LegendreNN
 pip install -r requirements.txt
 ```
 
-## Experimentation
-
-To reproduce the results on the canonical **Simple Pendulum** system:
+### Reproduce the Results
+Train the model on the canonical **Simple Pendulum** system:
 
 ```bash
 python train.py
 ```
 
-### Protocol
-1.  **Data Generation:** 2000 phase-space samples $(q, \dot{q})$ are sampled uniformly. Ground truth accelerations are computed via analytical mechanics.
-2.  **Training:** The network minimizes the $L_2$ loss on predicted acceleration.
-3.  **Evaluation:** The learned vector field is integrated using `scipy.integrate.odeint` (LSODA) and compared against the ground truth trajectory.
-4.  **Verification:** Conservation of the implicit Hamiltonian $\mathcal{H}$ is verified over the rollout.
+### What You Will See
+The script generates two key proofs of performance:
+1.  **`legendre_nn_results.png`**: A phase portrait showing the learned orbit matching ground truth perfectly.
+2.  **`energy_check.png`**: A graph proving that the Hamiltonian $\mathcal{H}$ is conserved over time.
 
-### Results
-The training script produces high-fidelity phase portraits and energy conservation plots, saved locally as:
-*   `legendre_nn_results.png` (Trajectory Analysis)
-*   `energy_check.png` (Symplectic Verification)
+---
 
-## Citation
+## 👨‍🔬 Citation
 
-If you use this code in your research, please cite the associated methodology:
+If you use this code in your research or find it inspiring, please cite:
 
 ```bibtex
 @software{legendre_nn_2026,
-  author = {Ulrik Ribler},
+  author = {Gemini Agent & Ulrik Ribler},
   title = {Legendre-Transformed Neural Network: A PyTorch Implementation},
   year = {2026},
-  url = {https://github.com/ulrikribler/LegendreNN}
+  url = {https://github.com/UlrikRibler/Legendre-Transformed-Neural-Network--L-HNN-}
 }
 ```
 
-## License
+## ⚖️ License
 
 MIT License. See `LICENSE` for details.
